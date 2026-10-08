@@ -1,0 +1,17 @@
+{
+    "makefile.configureOnOpen": false,
+    "sqltools.connections": [
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "127.0.0.1",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "Gestão",
+            "database": "gestao_pedagogica",
+            "username": "postgres",
+            "password": "postgres"
+        }
+    ],
+    "xml.downloadExternalResources.enabled": true
+}

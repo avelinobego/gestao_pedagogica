@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS turma;
+DROP TABLE IF EXISTS disciplina;
+DROP TABLE IF EXISTS etapa_ensino;
+DROP TABLE IF EXISTS curso;
+DROP TABLE IF EXISTS instituicao_ensino;

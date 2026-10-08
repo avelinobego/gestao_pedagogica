@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS matricula;
+DROP TABLE IF EXISTS aluno_responsavel;
+DROP TABLE IF EXISTS responsavel;
+DROP TABLE IF EXISTS aluno;
