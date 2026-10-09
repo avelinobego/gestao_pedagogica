@@ -137,3 +137,51 @@ func TestValidarMatriculaPermiteStatusConhecidos(t *testing.T) {
 		})
 	}
 }
+
+func TestAtivarMatricula(t *testing.T) {
+	testes := []struct {
+		nome        string
+		statusAtual model.StatusMatricula
+		esperado    model.StatusMatricula
+		erro        bool
+	}{
+		{
+			nome:        "reativar matrícula cancelada",
+			statusAtual: model.StatusMatriculaCancelada,
+			esperado:    model.StatusMatriculaAtiva,
+		},
+		{
+			nome:        "reativar matrícula trancada",
+			statusAtual: model.StatusMatriculaTrancada,
+			esperado:    model.StatusMatriculaAtiva,
+		},
+		{
+			nome:        "não reativar matrícula ativa",
+			statusAtual: model.StatusMatriculaAtiva,
+			erro:        true,
+		},
+		{
+			nome:        "não ativar matrícula concluída",
+			statusAtual: model.StatusMatriculaConcluida,
+			erro:        true,
+		},
+	}
+
+	for _, teste := range testes {
+		t.Run(teste.nome, func(t *testing.T) {
+			status, err := AtivarMatricula(teste.statusAtual)
+			if teste.erro {
+				if err == nil {
+					t.Fatal("esperava erro de transição de status")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("AtivarMatricula() retornou erro: %v", err)
+			}
+			if status != teste.esperado {
+				t.Errorf("status = %q; esperado %q", status, teste.esperado)
+			}
+		})
+	}
+}

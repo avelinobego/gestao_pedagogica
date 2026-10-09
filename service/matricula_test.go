@@ -2,30 +2,114 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/avelinobego/gestao_pedagogica/domain"
 	"github.com/avelinobego/gestao_pedagogica/model"
+	"github.com/avelinobego/gestao_pedagogica/shared"
 	"github.com/avelinobego/gestao_pedagogica/shared/plataforma"
 	"github.com/google/uuid"
 )
 
-// TestComposicaoHandlersAluno demonstrates atomic composition of multiple handlers
-// creating an aluno in a single transaction via plataforma.Executar
-func TestComposicaoHandlersAluno(t *testing.T) {
+var instituicaoTesteID = uuid.MustParse("90000000-0000-0000-0000-000000000001")
+var turmaTesteID = uuid.MustParse("30000000-0000-0000-0000-000000000001")
+
+func cpfTeste() string {
+	return strings.ReplaceAll(uuid.NewString(), "-", "")[:11]
+}
+
+func numeroMatriculaTeste() string {
+	return uuid.NewString()[:30]
+}
+
+func cleanupRegistro(t *testing.T, tabela string, id uuid.UUID) {
+	t.Helper()
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		db, err := plataforma.GetDB(ctx)
+		if err != nil {
+			t.Errorf("failed to get test database for cleanup: %v", err)
+			return
+		}
+		if _, err := db.ExecContext(ctx, "DELETE FROM "+tabela+" WHERE id = $1", id); err != nil {
+			t.Errorf("failed to clean up test %s record: %v", tabela, err)
+		}
+	})
+}
+
+func cleanupVinculoTeste(t *testing.T, alunoID, responsavelID uuid.UUID) {
+	t.Helper()
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		db, err := plataforma.GetDB(ctx)
+		if err != nil {
+			t.Errorf("failed to get test database for cleanup: %v", err)
+			return
+		}
+		if _, err := db.ExecContext(ctx, `
+			DELETE FROM aluno_responsavel WHERE aluno_id = $1 AND responsavel_id = $2`,
+			alunoID, responsavelID,
+		); err != nil {
+			t.Errorf("failed to clean up test student/guardian relationship: %v", err)
+		}
+	})
+}
+
+func requireDatabase(t *testing.T) {
+	t.Helper()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
+	config, err := shared.LoadConfig("$HOME/.config", ".")
+	if err != nil {
+		t.Skipf("test database configuration unavailable: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := plataforma.Initialize(ctx, config.Database.Driver, config.Database.Dsn); err != nil {
+		t.Skipf("test database unavailable: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := plataforma.Close(); err != nil {
+			t.Errorf("failed to close test database: %v", err)
+		}
+	})
+	db, err := plataforma.GetDB(ctx)
+	if err != nil {
+		t.Skipf("test database unavailable: %v", err)
+	}
+	var possuiDadosBase bool
+	err = db.GetContext(ctx, &possuiDadosBase, `
+		SELECT EXISTS (
+			SELECT 1 FROM instituicao_ensino WHERE id = $1
+		) AND EXISTS (
+			SELECT 1 FROM turma WHERE id = $2
+		)`, instituicaoTesteID, turmaTesteID)
+	if err != nil || !possuiDadosBase {
+		t.Skip("integration tests require migrations and seeded institution/turma data")
+	}
+}
+
+// TestComposicaoHandlersAluno demonstrates atomic composition of multiple handlers
+// creating an aluno in a single transaction via plataforma.Executar
+func TestComposicaoHandlersAluno(t *testing.T) {
+	requireDatabase(t)
 
 	ctx := context.Background()
 
 	// Create an aluno with all fields
 	aluno := &model.Aluno{
 		ID:             uuid.New(),
-		InstituicaoID:  uuid.New(),
+		InstituicaoID:  uuid.MustParse("90000000-0000-0000-0000-000000000001"),
 		Nome:           "João Silva",
 		NomeSocial:     "João",
-		CPF:            "12345678900",
+		CPF:            cpfTeste(),
 		RG:             "123456789",
 		DataNascimento: time.Date(2010, 5, 15, 0, 0, 0, 0, time.UTC),
 		Email:          "joao@example.com",
@@ -35,6 +119,7 @@ func TestComposicaoHandlersAluno(t *testing.T) {
 		UF:             "SP",
 		Status:         model.StatusAlunoAtivo,
 	}
+	cleanupRegistro(t, "aluno", aluno.ID)
 
 	// Execute handler in transaction
 	if err := plataforma.Executar(ctx, CriarAluno(aluno)); err != nil {
@@ -57,9 +142,7 @@ func TestComposicaoHandlersAluno(t *testing.T) {
 
 // TestComposicaoHandlersResponsavel demonstrates atomic composition for responsável operations
 func TestComposicaoHandlersResponsavel(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
+	requireDatabase(t)
 
 	ctx := context.Background()
 
@@ -67,11 +150,12 @@ func TestComposicaoHandlersResponsavel(t *testing.T) {
 	responsavel := &model.Responsavel{
 		ID:       uuid.New(),
 		Nome:     "Maria Silva",
-		CPF:      "98765432100",
+		CPF:      cpfTeste(),
 		Email:    "maria@example.com",
 		Telefone: "11988888888",
 		Endereco: "Rua B, 456",
 	}
+	cleanupRegistro(t, "responsavel", responsavel.ID)
 
 	// Execute handler in transaction
 	if err := plataforma.Executar(ctx, CriarResponsavel(responsavel)); err != nil {
@@ -92,16 +176,14 @@ func TestComposicaoHandlersResponsavel(t *testing.T) {
 // TestComposicaoMultiplosHandlers demonstrates composing multiple handlers in a single transaction.
 // This creates an aluno, then updates it, ensuring atomicity.
 func TestComposicaoMultiplosHandlers(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
+	requireDatabase(t)
 
 	ctx := context.Background()
 
 	// Create an aluno with initial data
 	aluno := &model.Aluno{
 		ID:             uuid.New(),
-		InstituicaoID:  uuid.New(),
+		InstituicaoID:  instituicaoTesteID,
 		Nome:           "Pedro Santos",
 		NomeSocial:     "",
 		CPF:            "",
@@ -114,6 +196,7 @@ func TestComposicaoMultiplosHandlers(t *testing.T) {
 		UF:             "SP",
 		Status:         model.StatusAlunoAtivo,
 	}
+	cleanupRegistro(t, "aluno", aluno.ID)
 
 	// Update data for the update handler
 	alunoAtualizado := *aluno
@@ -147,16 +230,14 @@ func TestComposicaoMultiplosHandlers(t *testing.T) {
 // TestComposicaoAlunoResponsavelMatricula demonstrates composing handlers for multiple entities:
 // creating an aluno, responsável, their relationship, and a matrícula all atomically.
 func TestComposicaoAlunoResponsavelMatricula(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
+	requireDatabase(t)
 
 	ctx := context.Background()
 
 	alunoID := uuid.New()
 	responsavelID := uuid.New()
-	turmaID := uuid.New()
-	instituicaoID := uuid.New()
+	turmaID := turmaTesteID
+	instituicaoID := instituicaoTesteID
 
 	// Create aluno
 	aluno := &model.Aluno{
@@ -174,16 +255,18 @@ func TestComposicaoAlunoResponsavelMatricula(t *testing.T) {
 		UF:             "SP",
 		Status:         model.StatusAlunoAtivo,
 	}
+	cleanupRegistro(t, "aluno", aluno.ID)
 
 	// Create responsável
 	responsavel := &model.Responsavel{
 		ID:       responsavelID,
 		Nome:     "Ana Oliveira",
-		CPF:      "11122233344",
+		CPF:      cpfTeste(),
 		Email:    "ana@example.com",
 		Telefone: "11984444444",
 		Endereco: "Rua D, 321",
 	}
+	cleanupRegistro(t, "responsavel", responsavel.ID)
 
 	// Create relationship
 	vinculo := model.AlunoResponsavel{
@@ -192,18 +275,20 @@ func TestComposicaoAlunoResponsavelMatricula(t *testing.T) {
 		Parentesco:    "MÃE",
 		Principal:     true,
 	}
+	cleanupVinculoTeste(t, alunoID, responsavelID)
 
 	// Create matrícula
 	matricula := &model.Matricula{
 		ID:            uuid.New(),
 		AlunoID:       alunoID,
 		TurmaID:       turmaID,
-		Numero:        "001",
+		Numero:        numeroMatriculaTeste(),
 		DataMatricula: time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
 		DataConclusao: nil,
 		Status:        model.StatusMatriculaAtiva,
 		Observacao:    "Matrícula automática",
 	}
+	cleanupRegistro(t, "matricula", matricula.ID)
 
 	// Execute all handlers in a single atomic transaction
 	err := plataforma.Executar(ctx,
@@ -255,9 +340,7 @@ func TestComposicaoAlunoResponsavelMatricula(t *testing.T) {
 
 // TestInativarAlunoHandler demonstrates the inactivation handler in a transaction
 func TestInativarAlunoHandler(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
+	requireDatabase(t)
 
 	ctx := context.Background()
 
@@ -266,7 +349,7 @@ func TestInativarAlunoHandler(t *testing.T) {
 	// Create an aluno
 	aluno := &model.Aluno{
 		ID:             alunoID,
-		InstituicaoID:  uuid.New(),
+		InstituicaoID:  instituicaoTesteID,
 		Nome:           "Carlos Mendes",
 		NomeSocial:     "",
 		CPF:            "",
@@ -279,6 +362,7 @@ func TestInativarAlunoHandler(t *testing.T) {
 		UF:             "SP",
 		Status:         model.StatusAlunoAtivo,
 	}
+	cleanupRegistro(t, "aluno", alunoID)
 
 	// Create and then inactivate in a single transaction
 	err := plataforma.Executar(ctx,
@@ -302,20 +386,18 @@ func TestInativarAlunoHandler(t *testing.T) {
 
 // TestCancelarMatriculaHandler demonstrates the cancellation handler in a transaction
 func TestCancelarMatriculaHandler(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
+	requireDatabase(t)
 
 	ctx := context.Background()
 
 	alunoID := uuid.New()
-	turmaID := uuid.New()
+	turmaID := turmaTesteID
 	matriculaID := uuid.New()
 
 	// Create aluno and matrícula, then cancel
 	aluno := &model.Aluno{
 		ID:             alunoID,
-		InstituicaoID:  uuid.New(),
+		InstituicaoID:  instituicaoTesteID,
 		Nome:           "Fernanda Costa",
 		NomeSocial:     "",
 		CPF:            "",
@@ -328,17 +410,19 @@ func TestCancelarMatriculaHandler(t *testing.T) {
 		UF:             "SP",
 		Status:         model.StatusAlunoAtivo,
 	}
+	cleanupRegistro(t, "aluno", alunoID)
 
 	matricula := &model.Matricula{
 		ID:            matriculaID,
 		AlunoID:       alunoID,
 		TurmaID:       turmaID,
-		Numero:        "002",
+		Numero:        numeroMatriculaTeste(),
 		DataMatricula: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
 		DataConclusao: nil,
 		Status:        model.StatusMatriculaAtiva,
 		Observacao:    "",
 	}
+	cleanupRegistro(t, "matricula", matriculaID)
 
 	// Create aluno and matrícula, then cancel matrícula in a single transaction
 	err := plataforma.Executar(ctx,
@@ -358,5 +442,59 @@ func TestCancelarMatriculaHandler(t *testing.T) {
 
 	if retrieved.Status != model.StatusMatriculaCancelada {
 		t.Errorf("expected status %q, got %q", model.StatusMatriculaCancelada, retrieved.Status)
+	}
+}
+
+func TestAtivarMatriculaHandler(t *testing.T) {
+	requireDatabase(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	aluno := &model.Aluno{
+		ID:             uuid.New(),
+		InstituicaoID:  instituicaoTesteID,
+		Nome:           "Aluno teste de ativação",
+		CPF:            cpfTeste(),
+		DataNascimento: time.Date(2012, 4, 5, 0, 0, 0, 0, time.UTC),
+		Status:         model.StatusAlunoAtivo,
+	}
+	cleanupRegistro(t, "aluno", aluno.ID)
+	matricula := &model.Matricula{
+		ID:            uuid.New(),
+		AlunoID:       aluno.ID,
+		TurmaID:       turmaTesteID,
+		Numero:        numeroMatriculaTeste(),
+		DataMatricula: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		Status:        model.StatusMatriculaTrancada,
+	}
+	cleanupRegistro(t, "matricula", matricula.ID)
+
+	if err := plataforma.Executar(ctx, CriarAluno(aluno), CriarMatricula(matricula)); err != nil {
+		t.Fatalf("failed to create test student and matrícula: %v", err)
+	}
+	if err := plataforma.Executar(ctx, AtivarMatricula(matricula.ID)); err != nil {
+		t.Fatalf("failed to activate matrícula: %v", err)
+	}
+
+	retrieved, err := BuscarMatricula(ctx, matricula.ID)
+	if err != nil {
+		t.Fatalf("failed to retrieve activated matrícula: %v", err)
+	}
+	if retrieved.Status != model.StatusMatriculaAtiva {
+		t.Errorf("status = %q; expected %q", retrieved.Status, model.StatusMatriculaAtiva)
+	}
+	if err := plataforma.Executar(ctx, AtivarMatricula(matricula.ID)); !errors.Is(err, domain.ErrMatriculaNaoAtivavel) {
+		t.Errorf("second activation error = %v; expected ErrMatriculaNaoAtivavel", err)
+	}
+}
+
+func TestAtivarMatriculaInexistenteRetornaNoRows(t *testing.T) {
+	requireDatabase(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err := plataforma.Executar(ctx, AtivarMatricula(uuid.New()))
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("AtivarMatricula() error = %v; expected sql.ErrNoRows", err)
 	}
 }
