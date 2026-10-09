@@ -28,8 +28,21 @@ const selectMatricula = `
 		observacao, criado_em, atualizado_em
 	FROM matricula`
 
-func obterConn(ctx context.Context) (*sqlx.Conn, error) {
-	conn, err := plataforma.GetConn(ctx)
+const selectMatriculasComNomes = `
+	SELECT m.id, m.aluno_id, a.nome AS aluno_nome, m.turma_id, t.nome AS turma_nome,
+		m.numero, m.data_matricula, m.data_conclusao, m.status, m.observacao,
+		m.criado_em, m.atualizado_em
+	FROM matricula AS m
+	JOIN aluno AS a ON a.id = m.aluno_id
+	JOIN turma AS t ON t.id = m.turma_id`
+
+const selectTurma = `
+	SELECT id, instituicao_id, curso_id, etapa_id, nome, codigo, ano_letivo,
+		turno, status, criado_em
+	FROM turma`
+
+func obterDB(ctx context.Context) (*sqlx.DB, error) {
+	conn, err := plataforma.GetDB(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("falha ao obter conexão com o banco: %w", err)
 	}
@@ -51,7 +64,7 @@ func verificarLinhasAfetadasTx(result sql.Result, err error, entidade string) er
 }
 
 func ListarTodosAlunos(ctx context.Context) ([]model.Aluno, error) {
-	conn, err := obterConn(ctx)
+	conn, err := obterDB(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +76,7 @@ func ListarTodosAlunos(ctx context.Context) ([]model.Aluno, error) {
 }
 
 func BuscarAluno(ctx context.Context, id uuid.UUID) (model.Aluno, error) {
-	conn, err := obterConn(ctx)
+	conn, err := obterDB(ctx)
 	if err != nil {
 		return model.Aluno{}, err
 	}
@@ -129,7 +142,7 @@ func InativarAluno(id uuid.UUID) plataforma.Handler {
 }
 
 func ListarTodosResponsaveis(ctx context.Context) ([]model.Responsavel, error) {
-	conn, err := obterConn(ctx)
+	conn, err := obterDB(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +154,7 @@ func ListarTodosResponsaveis(ctx context.Context) ([]model.Responsavel, error) {
 }
 
 func BuscarResponsavel(ctx context.Context, id uuid.UUID) (model.Responsavel, error) {
-	conn, err := obterConn(ctx)
+	conn, err := obterDB(ctx)
 	if err != nil {
 		return model.Responsavel{}, err
 	}
@@ -217,7 +230,7 @@ func ExcluirResponsavel(id uuid.UUID) plataforma.Handler {
 }
 
 func ListarVinculosPorAluno(ctx context.Context, alunoID uuid.UUID) ([]model.AlunoResponsavel, error) {
-	conn, err := obterConn(ctx)
+	conn, err := obterDB(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +245,7 @@ func ListarVinculosPorAluno(ctx context.Context, alunoID uuid.UUID) ([]model.Alu
 }
 
 func BuscarVinculoAlunoResponsavel(ctx context.Context, alunoID, responsavelID uuid.UUID) (model.AlunoResponsavel, error) {
-	conn, err := obterConn(ctx)
+	conn, err := obterDB(ctx)
 	if err != nil {
 		return model.AlunoResponsavel{}, err
 	}
@@ -286,31 +299,43 @@ func ExcluirVinculoAlunoResponsavel(alunoID, responsavelID uuid.UUID) plataforma
 }
 
 func ListarTodasMatriculas(ctx context.Context) ([]model.Matricula, error) {
-	conn, err := obterConn(ctx)
+	conn, err := obterDB(ctx)
 	if err != nil {
 		return nil, err
 	}
 	matriculas := make([]model.Matricula, 0)
-	if err := conn.SelectContext(ctx, &matriculas, selectMatricula+" ORDER BY data_matricula DESC, numero ASC"); err != nil {
+	if err := conn.SelectContext(ctx, &matriculas, selectMatriculasComNomes+" ORDER BY m.data_matricula DESC, m.numero ASC"); err != nil {
 		return nil, fmt.Errorf("falha ao listar matrículas: %w", err)
 	}
 	return matriculas, nil
 }
 
+func ListarTodasTurmas(ctx context.Context) ([]model.Turma, error) {
+	db, err := obterDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+	turmas := make([]model.Turma, 0)
+	if err := db.SelectContext(ctx, &turmas, selectTurma+" ORDER BY ano_letivo DESC, nome ASC"); err != nil {
+		return nil, fmt.Errorf("falha ao listar turmas: %w", err)
+	}
+	return turmas, nil
+}
+
 func ListarMatriculasPorAluno(ctx context.Context, alunoID uuid.UUID) ([]model.Matricula, error) {
-	conn, err := obterConn(ctx)
+	conn, err := obterDB(ctx)
 	if err != nil {
 		return nil, err
 	}
 	matriculas := make([]model.Matricula, 0)
-	if err := conn.SelectContext(ctx, &matriculas, selectMatricula+" WHERE aluno_id = $1 ORDER BY data_matricula DESC, numero ASC", alunoID); err != nil {
+	if err := conn.SelectContext(ctx, &matriculas, selectMatriculasComNomes+" WHERE m.aluno_id = $1 ORDER BY m.data_matricula DESC, m.numero ASC", alunoID); err != nil {
 		return nil, fmt.Errorf("falha ao listar matrículas do aluno %s: %w", alunoID, err)
 	}
 	return matriculas, nil
 }
 
 func BuscarMatricula(ctx context.Context, id uuid.UUID) (model.Matricula, error) {
-	conn, err := obterConn(ctx)
+	conn, err := obterDB(ctx)
 	if err != nil {
 		return model.Matricula{}, err
 	}
@@ -377,6 +402,37 @@ func CancelarMatricula(id uuid.UUID) plataforma.Handler {
 			SET status = $2, atualizado_em = CURRENT_TIMESTAMP
 			WHERE id = $1`,
 			id, model.StatusMatriculaCancelada,
+		)
+		return verificarLinhasAfetadasTx(result, err, "matrícula")
+	}
+}
+
+func AtivarMatricula(id uuid.UUID) plataforma.Handler {
+	return func(tx *sqlx.Tx, ctx context.Context) error {
+		if id == uuid.Nil {
+			return errors.New("identificador da matrícula é obrigatório")
+		}
+
+		var statusAtual model.StatusMatricula
+		if err := tx.GetContext(ctx, &statusAtual,
+			"SELECT status FROM matricula WHERE id = $1 FOR UPDATE", id,
+		); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("matrícula %s: %w", id, sql.ErrNoRows)
+			}
+			return fmt.Errorf("falha ao consultar matrícula %s para ativação: %w", id, err)
+		}
+
+		novoStatus, err := domain.AtivarMatricula(statusAtual)
+		if err != nil {
+			return fmt.Errorf("falha ao ativar matrícula %s: %w", id, err)
+		}
+
+		result, err := tx.ExecContext(ctx, `
+			UPDATE matricula
+			SET status = $2, atualizado_em = CURRENT_TIMESTAMP
+			WHERE id = $1`,
+			id, novoStatus,
 		)
 		return verificarLinhasAfetadasTx(result, err, "matrícula")
 	}

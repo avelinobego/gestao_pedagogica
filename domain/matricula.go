@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 )
 
+var ErrMatriculaNaoAtivavel = errors.New("somente matrículas canceladas ou trancadas podem ser ativadas")
+
 func ValidarMatricula(matricula model.Matricula) error {
 	if matricula.AlunoID == uuid.Nil {
 		return errors.New("aluno da matrícula é obrigatório")
@@ -34,6 +36,15 @@ func ValidarMatricula(matricula model.Matricula) error {
 		return errors.New("status da matrícula é inválido")
 	}
 	return nil
+}
+
+func AtivarMatricula(statusAtual model.StatusMatricula) (model.StatusMatricula, error) {
+	switch statusAtual {
+	case model.StatusMatriculaCancelada, model.StatusMatriculaTrancada:
+		return model.StatusMatriculaAtiva, nil
+	default:
+		return "", ErrMatriculaNaoAtivavel
+	}
 }
 
 func statusMatriculaValido(status model.StatusMatricula) bool {

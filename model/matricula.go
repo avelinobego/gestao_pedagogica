@@ -60,7 +60,9 @@ type AlunoResponsavel struct {
 type Matricula struct {
 	ID            uuid.UUID       `json:"id" db:"id"`
 	AlunoID       uuid.UUID       `json:"aluno_id" db:"aluno_id"`
+	AlunoNome     string          `json:"aluno_nome,omitempty" db:"aluno_nome"`
 	TurmaID       uuid.UUID       `json:"turma_id" db:"turma_id"`
+	TurmaNome     string          `json:"turma_nome,omitempty" db:"turma_nome"`
 	Numero        string          `json:"numero" db:"numero"`
 	DataMatricula time.Time       `json:"data_matricula" db:"data_matricula"`
 	DataConclusao *time.Time      `json:"data_conclusao,omitempty" db:"data_conclusao"`
