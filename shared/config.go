@@ -2,16 +2,15 @@ package shared
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/spf13/viper"
 )
 
-func init() {
-	viper.SetConfigName("gestao")
-}
-
 type Config struct {
 	Database Database `mapstructure:"database"`
+	Server   Server   `mapstructure:"server"`
 }
 
 type Database struct {
@@ -19,20 +18,32 @@ type Database struct {
 	Dsn    string `mapstructure:"dsn"`
 }
 
-func LoadConfig(paths ...string) (config Config, er error) {
+type Server struct {
+	Address string `mapstructure:"address"`
+}
 
+func LoadConfig(paths ...string) (Config, error) {
 	if len(paths) == 0 {
-		er = fmt.Errorf("indique um caminho")
-		return
+		return Config{}, fmt.Errorf("indique ao menos um caminho de configuração")
 	}
+
+	var config Config
+	v := viper.New()
+	v.SetConfigName("gestao")
+	// v.SetConfigType("yaml")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
 
 	for _, p := range paths {
-		viper.AddConfigPath(p)
+		v.AddConfigPath(os.ExpandEnv(p))
 	}
 
-	viper.AutomaticEnv()
-	viper.ReadInConfig()
-	viper.Unmarshal(&config)
+	if err := v.ReadInConfig(); err != nil {
+		return Config{}, fmt.Errorf("falha ao ler configuração gestao: %w", err)
+	}
+	if err := v.Unmarshal(&config); err != nil {
+		return Config{}, fmt.Errorf("falha ao interpretar configuração gestao: %w", err)
+	}
 
-	return
+	return config, nil
 }
