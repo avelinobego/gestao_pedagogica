@@ -1,0 +1,45 @@
+{{define "matricula_form.html"}}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nova matrícula | Gestão Pedagógica</title>
+</head>
+<body>
+  <main>
+    <h1>Nova matrícula</h1>
+    {{if .Erro}}<p role="alert">{{.Erro}}</p>{{end}}
+    <form method="post" action="/matriculas">
+      <label for="aluno_id">Aluno</label>
+      <select id="aluno_id" name="aluno_id" required>
+        <option value="">Selecione</option>
+        {{range .Alunos}}
+        <option value="{{.ID}}" {{if eq $.Values.AlunoID (printf "%v" .ID)}}selected{{end}}>{{.Nome}}</option>
+        {{end}}
+      </select>
+
+      <label for="turma_id">Turma</label>
+      <select id="turma_id" name="turma_id" required>
+        <option value="">Selecione</option>
+        {{range .Turmas}}
+        <option value="{{.ID}}" {{if eq $.Values.TurmaID (printf "%v" .ID)}}selected{{end}}>{{.Nome}} — {{.AnoLetivo}}</option>
+        {{end}}
+      </select>
+
+      <label for="numero">Número</label>
+      <input id="numero" name="numero" maxlength="30" required value="{{.Values.Numero}}">
+
+      <label for="data_matricula">Data da matrícula</label>
+      <input id="data_matricula" name="data_matricula" type="date" required value="{{.Values.DataMatricula}}">
+
+      <label for="observacao">Observação</label>
+      <textarea id="observacao" name="observacao">{{.Values.Observacao}}</textarea>
+
+      <button type="submit">Salvar matrícula</button>
+    </form>
+    <p><a href="/matriculas">Voltar às matrículas</a></p>
+  </main>
+</body>
+</html>
+{{end}}

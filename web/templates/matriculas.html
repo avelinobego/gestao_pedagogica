@@ -1,0 +1,47 @@
+{{define "matriculas.html"}}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Matrículas | Gestão Pedagógica</title>
+</head>
+<body>
+  <main>
+    <h1>Matrículas</h1>
+    <p><a href="/matriculas/nova">Nova matrícula</a></p>
+    {{if .Matriculas}}
+    <table>
+      <thead>
+        <tr><th>Número</th><th>Aluno</th><th>Turma</th><th>Data</th><th>Status</th><th>Ação</th></tr>
+      </thead>
+      <tbody>
+        {{range .Matriculas}}
+        <tr>
+          <td>{{.Numero}}</td>
+          <td>{{.AlunoNome}}</td>
+          <td>{{.TurmaNome}}</td>
+          <td>{{.DataMatricula.Format "02/01/2006"}}</td>
+          <td>{{.Status}}</td>
+          <td>
+            {{if or (eq .Status "CANCELADA") (eq .Status "TRANCADA")}}
+            <form method="post" action="/matriculas/{{.ID}}/ativar">
+              <button type="submit">Ativar Matrícula</button>
+            </form>
+            {{else if eq .Status "ATIVA"}}
+            <form method="post" action="/matriculas/{{.ID}}/cancelar">
+              <button type="submit">Cancelar</button>
+            </form>
+            {{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <p>Nenhuma matrícula cadastrada.</p>
+    {{end}}
+  </main>
+</body>
+</html>
+{{end}}
