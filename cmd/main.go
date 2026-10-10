@@ -36,7 +36,7 @@ func run() error {
 		}
 	}()
 
-	handler, err := web.NewMatriculasHandler(web.MatriculaService{})
+	handler, err := web.NewHandler(web.MatriculaService{}, web.AcademicoService{})
 	if err != nil {
 		return err
 	}

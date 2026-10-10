@@ -85,6 +85,8 @@ func NewMatriculasHandler(useCases MatriculaUseCases) (http.Handler, error) {
 		return nil, errors.New("serviços de matrícula são obrigatórios")
 	}
 	templates, err := template.ParseFS(templateFiles,
+		"templates/home.html",
+		"templates/navigation.html",
 		"templates/matriculas.html",
 		"templates/matricula_form.html",
 	)
@@ -93,12 +95,17 @@ func NewMatriculasHandler(useCases MatriculaUseCases) (http.Handler, error) {
 	}
 	handler := &matriculasHandler{useCases: useCases, templates: templates}
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{$}", handler.inicio)
 	mux.HandleFunc("GET /matriculas", handler.listar)
 	mux.HandleFunc("GET /matriculas/nova", handler.nova)
 	mux.HandleFunc("POST /matriculas", handler.criar)
 	mux.HandleFunc("POST /matriculas/{id}/cancelar", handler.cancelar)
 	mux.HandleFunc("POST /matriculas/{id}/ativar", handler.ativar)
 	return http.NewCrossOriginProtection().Handler(mux), nil
+}
+
+func (h *matriculasHandler) inicio(w http.ResponseWriter, r *http.Request) {
+	h.render(w, http.StatusOK, "home.html", nil)
 }
 
 func (h *matriculasHandler) listar(w http.ResponseWriter, r *http.Request) {
