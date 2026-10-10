@@ -1,0 +1,28 @@
+{{define "academico_home.html"}}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Módulo acadêmico | Gestão Pedagógica</title>
+</head>
+<body>
+  <header>
+    {{template "navigation.html" .}}
+  </header>
+  <main>
+    <h1>Módulo acadêmico</h1>
+    <p>Gerencie instituições, cursos, etapas, disciplinas e turmas.</p>
+    <nav aria-label="Cadastros acadêmicos">
+      <ul>
+        <li><a href="/academico/instituicoes">Instituições de ensino</a></li>
+        <li><a href="/academico/cursos">Cursos</a></li>
+        <li><a href="/academico/etapas">Etapas de ensino</a></li>
+        <li><a href="/academico/disciplinas">Disciplinas</a></li>
+        <li><a href="/academico/turmas">Turmas</a></li>
+      </ul>
+    </nav>
+  </main>
+</body>
+</html>
+{{end}}

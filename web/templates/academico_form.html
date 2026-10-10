@@ -1,0 +1,48 @@
+{{define "academico_form.html"}}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} | Módulo acadêmico</title>
+</head>
+<body>
+  <header>
+    {{template "navigation.html" .}}
+  </header>
+  <main>
+    <p><a href="/academico">Voltar ao módulo acadêmico</a></p>
+    <h1>{{.Title}}</h1>
+    {{if .Erro}}<p role="alert">{{.Erro}}</p>{{end}}
+    <form method="post" action="{{.Action}}">
+      {{range .Fields}}
+      <div>
+        {{if eq .Type "checkbox"}}
+        <label>
+          <input type="checkbox" name="{{.Name}}" {{if eq .Value "true"}}checked{{end}}>
+          {{.Label}}
+        </label>
+        {{else}}
+        <label for="{{.Name}}">{{.Label}}</label>
+        {{if eq .Type "select"}}
+        <select id="{{.Name}}" name="{{.Name}}" {{if .Required}}required{{end}}>
+          <option value="">Selecione</option>
+          {{$valorAtual := .Value}}
+          {{range .Options}}
+          <option value="{{.Value}}" {{if eq $valorAtual .Value}}selected{{end}}>{{.Label}}</option>
+          {{end}}
+        </select>
+        {{else if eq .Type "textarea"}}
+        <textarea id="{{.Name}}" name="{{.Name}}" {{if .Required}}required{{end}}>{{.Value}}</textarea>
+        {{else}}
+        <input id="{{.Name}}" name="{{.Name}}" type="{{.Type}}" value="{{.Value}}" {{if .Required}}required{{end}}>
+        {{end}}
+        {{end}}
+      </div>
+      {{end}}
+      <button type="submit">Salvar</button>
+    </form>
+  </main>
+</body>
+</html>
+{{end}}

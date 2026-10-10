@@ -1,0 +1,26 @@
+{{define "home.html"}}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestão Pedagógica</title>
+</head>
+<body>
+  <header>
+    {{template "navigation.html" .}}
+  </header>
+  <main>
+    <section aria-labelledby="titulo-principal">
+      <p>Gestão Pedagógica</p>
+      <h1 id="titulo-principal">Organize a vida acadêmica em um só lugar</h1>
+      <p>Consulte as matrículas e acompanhe a organização de alunos e turmas.</p>
+      <p>
+        <a href="/matriculas">Consultar matrículas</a>
+        <a href="/matriculas/nova">Iniciar nova matrícula</a>
+      </p>
+    </section>
+  </main>
+</body>
+</html>
+{{end}}

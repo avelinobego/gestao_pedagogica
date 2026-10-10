@@ -1,0 +1,47 @@
+{{define "academico_list.html"}}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} | Módulo acadêmico</title>
+</head>
+<body>
+  <header>
+    {{template "navigation.html" .}}
+  </header>
+  <main>
+    <p><a href="/academico">Voltar ao módulo acadêmico</a></p>
+    <h1>{{.Title}}</h1>
+    <p><a href="{{.NewURL}}">Novo cadastro</a></p>
+    {{if .Rows}}
+    <table>
+      <thead>
+        <tr>
+          {{range .Headers}}<th scope="col">{{.}}</th>{{end}}
+          <th scope="col">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Rows}}
+        <tr>
+          {{range .Cells}}<td>{{.}}</td>{{end}}
+          <td>
+            <a href="{{.EditURL}}">Editar</a>
+            {{if .ActionURL}}
+            <form method="post" action="{{.ActionURL}}">
+              <button type="submit">{{.ActionLabel}}</button>
+            </form>
+            {{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <p>Nenhum cadastro encontrado.</p>
+    {{end}}
+  </main>
+</body>
+</html>
+{{end}}

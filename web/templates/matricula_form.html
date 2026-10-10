@@ -7,6 +7,9 @@
   <title>Nova matrícula | Gestão Pedagógica</title>
 </head>
 <body>
+  <header>
+    {{template "navigation.html" .}}
+  </header>
   <main>
     <h1>Nova matrícula</h1>
     {{if .Erro}}<p role="alert">{{.Erro}}</p>{{end}}
