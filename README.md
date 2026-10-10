@@ -6,7 +6,7 @@ Projeto em Go para gestão pedagógica, com estruturas acadêmicas, avaliação 
 github.com/avelinobego/gestao_pedagogica
 ```
 
-> **Escopo atual:** o projeto oferece páginas HTML server-rendered para listar, cadastrar e cancelar matrículas. A interface ainda não tem autenticação; mantenha-a em rede confiável.
+> **Escopo atual:** o projeto oferece páginas HTML server-rendered para matrículas e gestão acadêmica de instituições, cursos, etapas, disciplinas e turmas. A interface ainda não tem autenticação; mantenha-a em rede confiável.
 
 ## Requisitos
 
@@ -63,7 +63,7 @@ Na raiz do repositório:
 go run ./cmd
 ```
 
-O endereço de escuta vem de `server.address` em `gestao.yaml`; se omitido, usa `127.0.0.1:8080`. A variável de ambiente `HTTP_ADDR`, quando definida, sobrescreve o valor do arquivo. O servidor fica acessível localmente em <http://127.0.0.1:8080/matriculas>. Por exemplo:
+O endereço de escuta vem de `server.address` em `gestao.yaml`; se omitido, usa `127.0.0.1:8080`. A variável de ambiente `HTTP_ADDR`, quando definida, sobrescreve o valor do arquivo. O servidor fica acessível localmente em <http://127.0.0.1:8080/>. Por exemplo:
 
 ```sh
 HTTP_ADDR=127.0.0.1:8080 go run ./cmd
@@ -75,17 +75,29 @@ O `Makefile` também define o alvo `run`:
 make run
 ```
 
-### Rotas de matrícula
+### Rotas
 
 | Método | Rota | Ação |
 | --- | --- | --- |
+| `GET` | `/` | Exibe a página inicial com atalhos para matrículas. |
 | `GET` | `/matriculas` | Lista matrículas cadastradas. |
 | `GET` | `/matriculas/nova` | Exibe o formulário de cadastro. |
 | `POST` | `/matriculas` | Valida e cria uma matrícula. |
 | `POST` | `/matriculas/{id}/cancelar` | Cancela uma matrícula. |
 | `POST` | `/matriculas/{id}/ativar` | Ativa uma matrícula cancelada ou trancada. |
+| `GET` | `/academico` | Exibe a página inicial do módulo acadêmico. |
+| `GET` | `/academico/{entidade}` | Lista instituições, cursos, etapas, disciplinas ou turmas. |
+| `GET` | `/academico/{entidade}/nova` | Exibe o formulário para novo cadastro. |
+| `POST` | `/academico/{entidade}` | Valida e cria um cadastro acadêmico. |
+| `GET` | `/academico/{entidade}/{id}/editar` | Exibe o formulário de edição. |
+| `POST` | `/academico/{entidade}/{id}` | Atualiza um cadastro acadêmico. |
+| `POST` | `/academico/instituicoes/{id}/inativar` | Inativa uma instituição sem apagar o histórico. |
+| `POST` | `/academico/cursos/{id}/inativar` | Inativa um curso sem apagar o histórico. |
+| `POST` | `/academico/etapas/{id}/excluir` | Exclui uma etapa somente quando não houver turmas vinculadas. |
+| `POST` | `/academico/disciplinas/{id}/inativar` | Inativa uma disciplina sem apagar o histórico. |
+| `POST` | `/academico/turmas/{id}/encerrar` | Encerra uma turma sem apagar o histórico. |
 
-Matrículas canceladas e trancadas podem ser reativadas para o estado `ATIVA`; os demais estados não permitem essa transição. Os formulários usam `POST` para alterações e o servidor aplica proteção contra requisições cross-origin (CSRF). A autenticação ainda não está implementada: mantenha o serviço ligado apenas a `localhost` ou a uma rede interna confiável e não o exponha diretamente à internet.
+Os valores de `{entidade}` são `instituicoes`, `cursos`, `etapas`, `disciplinas` e `turmas`. Matrículas canceladas e trancadas podem ser reativadas para o estado `ATIVA`; os demais estados não permitem essa transição. Instituições, cursos e disciplinas são inativados, turmas são encerradas, e etapas só podem ser excluídas se não houver turmas vinculadas. Os formulários usam `POST` para alterações e o servidor aplica proteção contra requisições cross-origin (CSRF). A autenticação ainda não está implementada: mantenha o serviço ligado apenas a `localhost` ou a uma rede interna confiável e não o exponha diretamente à internet.
 
 ## Validar
 
