@@ -40,40 +40,46 @@ type InstituicaoEnsino struct {
 }
 
 type Curso struct {
-	ID            uuid.UUID `json:"id" db:"id"`
-	InstituicaoID uuid.UUID `json:"instituicao_id" db:"instituicao_id"`
-	Nome          string    `json:"nome" db:"nome"`
-	Codigo        string    `json:"codigo" db:"codigo"`
-	Descricao     string    `json:"descricao" db:"descricao"`
-	Ativo         bool      `json:"ativo" db:"ativo"`
+	ID              uuid.UUID `json:"id" db:"id"`
+	InstituicaoID   uuid.UUID `json:"instituicao_id" db:"instituicao_id"`
+	InstituicaoNome string    `json:"instituicao_nome,omitempty" db:"instituicao_nome"`
+	Nome            string    `json:"nome" db:"nome"`
+	Codigo          string    `json:"codigo" db:"codigo"`
+	Descricao       string    `json:"descricao" db:"descricao"`
+	Ativo           bool      `json:"ativo" db:"ativo"`
 }
 
 type EtapaEnsino struct {
 	ID           uuid.UUID `json:"id" db:"id"`
 	CursoID      uuid.UUID `json:"curso_id" db:"curso_id"`
+	CursoNome    string    `json:"curso_nome,omitempty" db:"curso_nome"`
 	Nome         string    `json:"nome" db:"nome"`
 	Ordem        int       `json:"ordem" db:"ordem"`
 	CargaHoraria int       `json:"carga_horaria" db:"carga_horaria"`
 }
 
 type Disciplina struct {
-	ID            uuid.UUID `json:"id" db:"id"`
-	InstituicaoID uuid.UUID `json:"instituicao_id" db:"instituicao_id"`
-	Nome          string    `json:"nome" db:"nome"`
-	Codigo        string    `json:"codigo" db:"codigo"`
-	CargaHoraria  int       `json:"carga_horaria" db:"carga_horaria"`
-	Ativa         bool      `json:"ativa" db:"ativa"`
+	ID              uuid.UUID `json:"id" db:"id"`
+	InstituicaoID   uuid.UUID `json:"instituicao_id" db:"instituicao_id"`
+	InstituicaoNome string    `json:"instituicao_nome,omitempty" db:"instituicao_nome"`
+	Nome            string    `json:"nome" db:"nome"`
+	Codigo          string    `json:"codigo" db:"codigo"`
+	CargaHoraria    int       `json:"carga_horaria" db:"carga_horaria"`
+	Ativa           bool      `json:"ativa" db:"ativa"`
 }
 
 type Turma struct {
-	ID            uuid.UUID   `json:"id" db:"id"`
-	InstituicaoID uuid.UUID   `json:"instituicao_id" db:"instituicao_id"`
-	CursoID       uuid.UUID   `json:"curso_id" db:"curso_id"`
-	EtapaID       uuid.UUID   `json:"etapa_id" db:"etapa_id"`
-	Nome          string      `json:"nome" db:"nome"`
-	Codigo        string      `json:"codigo" db:"codigo"`
-	AnoLetivo     int         `json:"ano_letivo" db:"ano_letivo"`
-	Turno         Turno       `json:"turno" db:"turno"`
-	Status        StatusTurma `json:"status" db:"status"`
-	CriadoEm      time.Time   `json:"criado_em" db:"criado_em"`
+	ID              uuid.UUID   `json:"id" db:"id"`
+	InstituicaoID   uuid.UUID   `json:"instituicao_id" db:"instituicao_id"`
+	InstituicaoNome string      `json:"instituicao_nome,omitempty" db:"instituicao_nome"`
+	CursoID         uuid.UUID   `json:"curso_id" db:"curso_id"`
+	CursoNome       string      `json:"curso_nome,omitempty" db:"curso_nome"`
+	EtapaID         uuid.UUID   `json:"etapa_id" db:"etapa_id"`
+	EtapaNome       string      `json:"etapa_nome,omitempty" db:"etapa_nome"`
+	Nome            string      `json:"nome" db:"nome"`
+	Codigo          string      `json:"codigo" db:"codigo"`
+	AnoLetivo       int         `json:"ano_letivo" db:"ano_letivo"`
+	Turno           Turno       `json:"turno" db:"turno"`
+	Status          StatusTurma `json:"status" db:"status"`
+	CriadoEm        time.Time   `json:"criado_em" db:"criado_em"`
 }
