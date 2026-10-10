@@ -117,9 +117,35 @@ func TestListarMatriculasRenderizaHTML(t *testing.T) {
 		!strings.Contains(res.Body.String(), "Aluno Exemplo") ||
 		!strings.Contains(res.Body.String(), "Turma Exemplo") ||
 		!strings.Contains(res.Body.String(), id.String()) ||
+		!strings.Contains(res.Body.String(), `aria-label="Navegação principal"`) ||
+		!strings.Contains(res.Body.String(), `href="/matriculas/nova"`) ||
 		strings.Count(res.Body.String(), "Ativar Matrícula") != 2 ||
 		strings.Count(res.Body.String(), "Cancelar</button>") != 1 {
 		t.Errorf("resposta não contém dados da matrícula: %s", res.Body.String())
+	}
+}
+
+func TestPaginaInicialRenderizaLandingPageComMenuDeMatriculas(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	res := httptest.NewRecorder()
+
+	novoHandlerTeste(t, &fakeMatriculaUseCases{}).ServeHTTP(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("status = %d; esperado %d", res.Code, http.StatusOK)
+	}
+	if contentType := res.Header().Get("Content-Type"); contentType != "text/html; charset=utf-8" {
+		t.Errorf("Content-Type = %q; esperado HTML", contentType)
+	}
+	for _, texto := range []string{
+		"Organize a vida acadêmica em um só lugar",
+		`aria-label="Navegação principal"`,
+		`href="/matriculas"`,
+		`href="/matriculas/nova"`,
+	} {
+		if !strings.Contains(res.Body.String(), texto) {
+			t.Errorf("resposta não contém %q", texto)
+		}
 	}
 }
 
@@ -142,6 +168,22 @@ func TestFormularioDeMatriculaCarregaAlunoETurma(t *testing.T) {
 		if !strings.Contains(res.Body.String(), texto) {
 			t.Errorf("resposta não contém %q", texto)
 		}
+	}
+	for _, href := range []string{`href="/"`, `href="/matriculas"`, `href="/matriculas/nova"`} {
+		if !strings.Contains(res.Body.String(), href) {
+			t.Errorf("menu não contém %q", href)
+		}
+	}
+}
+
+func TestPaginaNaoEncontradaRetorna404(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/pagina-inexistente", nil)
+	res := httptest.NewRecorder()
+
+	novoHandlerTeste(t, &fakeMatriculaUseCases{}).ServeHTTP(res, req)
+
+	if res.Code != http.StatusNotFound {
+		t.Fatalf("status = %d; esperado %d", res.Code, http.StatusNotFound)
 	}
 }
 
