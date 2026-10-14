@@ -60,26 +60,17 @@ func novoHandlerAcademicoTeste(t *testing.T, academico AcademicoUseCases) http.H
 	return handler
 }
 
-func TestInicioAcademicoRenderizaNavegacaoDasEntidades(t *testing.T) {
+func TestInicioAcademicoRedirecionaParaSecaoNaHome(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/academico", nil)
 	res := httptest.NewRecorder()
 
 	novoHandlerAcademicoTeste(t, &fakeAcademicoUseCases{}).ServeHTTP(res, req)
 
-	if res.Code != http.StatusOK {
-		t.Fatalf("status = %d; esperado %d", res.Code, http.StatusOK)
+	if res.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d; esperado %d", res.Code, http.StatusSeeOther)
 	}
-	for _, texto := range []string{
-		"Módulo acadêmico",
-		`href="/academico/instituicoes"`,
-		`href="/academico/cursos"`,
-		`href="/academico/etapas"`,
-		`href="/academico/disciplinas"`,
-		`href="/academico/turmas"`,
-	} {
-		if !strings.Contains(res.Body.String(), texto) {
-			t.Errorf("resposta não contém %q", texto)
-		}
+	if destino := res.Header().Get("Location"); destino != "/#academico" {
+		t.Errorf("Location = %q; esperado %q", destino, "/#academico")
 	}
 }
 
@@ -93,7 +84,6 @@ func TestHandlerCompoePaginaInicialEModulosSemConflito(t *testing.T) {
 		conteudo string
 	}{
 		{"/", "Organize a vida acadêmica em um só lugar"},
-		{"/academico", "Módulo acadêmico"},
 	} {
 		req := httptest.NewRequest(http.MethodGet, rota.caminho, nil)
 		res := httptest.NewRecorder()
@@ -104,6 +94,12 @@ func TestHandlerCompoePaginaInicialEModulosSemConflito(t *testing.T) {
 		if !strings.Contains(res.Body.String(), rota.conteudo) {
 			t.Errorf("%s: resposta não contém %q", rota.caminho, rota.conteudo)
 		}
+	}
+	req := httptest.NewRequest(http.MethodGet, "/academico", nil)
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+	if res.Code != http.StatusSeeOther || res.Header().Get("Location") != "/#academico" {
+		t.Errorf("/academico: status = %d, Location = %q; esperado redirect para /#academico", res.Code, res.Header().Get("Location"))
 	}
 }
 
@@ -119,7 +115,7 @@ func TestListaInstituicoesRenderizaDadosENavegacao(t *testing.T) {
 	if res.Code != http.StatusOK {
 		t.Fatalf("status = %d; esperado %d", res.Code, http.StatusOK)
 	}
-	for _, texto := range []string{"Escola Horizonte", "Campinas/SP", "Ativa", "Editar"} {
+	for _, texto := range []string{"Escola Horizonte", "Campinas/SP", "Ativa", "Editar", `href="/#academico"`} {
 		if !strings.Contains(res.Body.String(), texto) {
 			t.Errorf("resposta não contém %q", texto)
 		}
@@ -142,7 +138,7 @@ func TestNovoCadastroTurmaCarregaOpcoesDeReferencia(t *testing.T) {
 		t.Fatalf("status = %d; esperado %d: %s", res.Code, http.StatusOK, res.Body.String())
 	}
 	for _, texto := range []string{
-		"Escola Horizonte", "Ensino Fundamental", "6º ano",
+		"Escola Horizonte", "Ensino Fundamental", "6º ano", `href="/#academico"`,
 		instituicaoID.String(), cursoID.String(), etapaID.String(),
 	} {
 		if !strings.Contains(res.Body.String(), texto) {

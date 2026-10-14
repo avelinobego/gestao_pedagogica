@@ -142,6 +142,13 @@ func TestPaginaInicialRenderizaLandingPageComMenuDeMatriculas(t *testing.T) {
 		`aria-label="Navegação principal"`,
 		`href="/matriculas"`,
 		`href="/matriculas/nova"`,
+		`id="academico"`,
+		`aria-label="Cadastros acadêmicos"`,
+		`href="/academico/instituicoes"`,
+		`href="/academico/cursos"`,
+		`href="/academico/etapas"`,
+		`href="/academico/disciplinas"`,
+		`href="/academico/turmas"`,
 	} {
 		if !strings.Contains(res.Body.String(), texto) {
 			t.Errorf("resposta não contém %q", texto)

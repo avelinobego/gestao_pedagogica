@@ -195,7 +195,6 @@ func NewAcademicoHandler(useCases AcademicoUseCases) (http.Handler, error) {
 	}
 	templates, err := template.ParseFS(templateFiles,
 		"templates/navigation.html",
-		"templates/academico_home.html",
 		"templates/academico_list.html",
 		"templates/academico_form.html",
 	)
@@ -235,7 +234,7 @@ func (h *academicoHandler) registrarRotas(mux *http.ServeMux) {
 }
 
 func (h *academicoHandler) inicio(w http.ResponseWriter, r *http.Request) {
-	h.render(w, http.StatusOK, "academico_home.html", nil)
+	http.Redirect(w, r, "/#academico", http.StatusSeeOther)
 }
 
 func (h *academicoHandler) listar(tipo string) http.HandlerFunc {
