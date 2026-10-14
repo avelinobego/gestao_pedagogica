@@ -30,9 +30,12 @@ func LoadConfig(paths ...string) (Config, error) {
 	var config Config
 	v := viper.New()
 	v.SetConfigName("gestao")
-	// v.SetConfigType("yaml")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
+	v.SetDefault("server.address", "127.0.0.1:8080")
+	if err := v.BindEnv("server.address", "HTTP_ADDR"); err != nil {
+		return Config{}, fmt.Errorf("falha ao vincular variável HTTP_ADDR: %w", err)
+	}
 
 	for _, p := range paths {
 		v.AddConfigPath(os.ExpandEnv(p))
