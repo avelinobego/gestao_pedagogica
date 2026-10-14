@@ -125,4 +125,12 @@ Os testes de `web` usam dependências simuladas e não precisam do PostgreSQL:
 go test ./web
 ```
 
-Os testes de `service` e de conexão tentam carregar `gestao.yaml` e conectar ao PostgreSQL; se a conexão ou os dados básicos das migrations não estiverem disponíveis, os testes de integração são ignorados.
+Os testes de integração de `service` e de conexão usam Testcontainers-Go para criar um PostgreSQL efêmero, aplicar todas as migrations `up` e removê-lo ao fim da suíte. É necessário ter Docker (ou um runtime compatível com a API Docker) disponível; esses testes não usam o banco configurado para a aplicação e falham explicitamente se o container não puder ser iniciado.
+
+Execute somente as suítes com integração de banco usando:
+
+```sh
+make test-db
+```
+
+Ou execute os testes sem integrações de banco com `go test -short ./...`.

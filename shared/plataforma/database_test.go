@@ -5,27 +5,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avelinobego/gestao_pedagogica/shared"
 	"github.com/avelinobego/gestao_pedagogica/shared/plataforma"
 	"github.com/jmoiron/sqlx"
 )
 
 func inicializarBancoDeTeste(t *testing.T) {
 	t.Helper()
-	config, err := shared.LoadConfig("$HOME/.config", ".")
-	if err != nil {
-		t.Skipf("configuração do banco de teste indisponível: %v", err)
+	if testing.Short() {
+		t.Skip("skipping database integration test in short mode")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := plataforma.Initialize(ctx, config.Database.Driver, config.Database.Dsn); err != nil {
-		t.Skipf("banco de teste indisponível: %v", err)
+	if _, err := plataforma.GetDB(ctx); err != nil {
+		t.Fatalf("banco de teste não inicializado: %v", err)
 	}
-	t.Cleanup(func() {
-		if err := plataforma.Close(); err != nil {
-			t.Errorf("falha ao fechar conexão de teste: %v", err)
-		}
-	})
 }
 
 func TestConexao(t *testing.T) {

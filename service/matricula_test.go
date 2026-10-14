@@ -10,7 +10,6 @@ import (
 
 	"github.com/avelinobego/gestao_pedagogica/domain"
 	"github.com/avelinobego/gestao_pedagogica/model"
-	"github.com/avelinobego/gestao_pedagogica/shared"
 	"github.com/avelinobego/gestao_pedagogica/shared/plataforma"
 	"github.com/google/uuid"
 )
@@ -66,23 +65,11 @@ func requireDatabase(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-	config, err := shared.LoadConfig("$HOME/.config", ".")
-	if err != nil {
-		t.Skipf("test database configuration unavailable: %v", err)
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := plataforma.Initialize(ctx, config.Database.Driver, config.Database.Dsn); err != nil {
-		t.Skipf("test database unavailable: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := plataforma.Close(); err != nil {
-			t.Errorf("failed to close test database: %v", err)
-		}
-	})
 	db, err := plataforma.GetDB(ctx)
 	if err != nil {
-		t.Skipf("test database unavailable: %v", err)
+		t.Fatalf("test database was not initialized: %v", err)
 	}
 	var possuiDadosBase bool
 	err = db.GetContext(ctx, &possuiDadosBase, `
@@ -91,8 +78,11 @@ func requireDatabase(t *testing.T) {
 		) AND EXISTS (
 			SELECT 1 FROM turma WHERE id = $2
 		)`, instituicaoTesteID, turmaTesteID)
-	if err != nil || !possuiDadosBase {
-		t.Skip("integration tests require migrations and seeded institution/turma data")
+	if err != nil {
+		t.Fatalf("failed to verify test database seed data: %v", err)
+	}
+	if !possuiDadosBase {
+		t.Fatal("test database is missing the seeded institution or turma")
 	}
 }
 

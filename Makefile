@@ -1,3 +1,8 @@
-.PHONY run:
+.PHONY: run test-db
+
+run:
 	@echo "Running the application..."
-	go run cmd/main.go
+	go run ./cmd
+
+test-db:
+	go test ./service ./shared/plataforma
